@@ -3,11 +3,12 @@
 [![CI](https://github.com/santiagonilopezlo-star/APIAQ-Back-End/actions/workflows/ci.yml/badge.svg)](https://github.com/santiagonilopezlo-star/APIAQ-Back-End/actions/workflows/ci.yml)
 
 Backend en Python del proyecto académico **Monitor de Calidad del Aire** (Universidad ECCI, Electiva I - Python).
-Consulta mediciones de PM2.5, NO₂ y O₃ en la API v3 de OpenAQ, calcula el AQI de la EPA cuando los datos lo permiten, compara por separado con las guías de la OMS y registra el historial de consultas.
+Consulta en vivo la API v3 de OpenAQ para estaciones de Colombia y devuelve PM2.5, NO₂ y O₃. No hay base de datos: cada petición va directo a OpenAQ.
 
 - **Equipo:** Johan Stwee Salgado Rodríguez · Santiago Nicolás López López
 - **Interfaz web:** repositorio [-APIAQ-Front-End](https://github.com/santiagonilopezlo-star/-APIAQ-Front-End)
-- **Contrato de la API:** [docs/contrato_api_v1.md](docs/contrato_api_v1.md)
+- **Contrato de la API:** [contrato_api_v1.md](contrato_api_v1.md)
+- **Colección de Postman:** [postman/APIAQ.postman_collection.json](postman/APIAQ.postman_collection.json)
 
 > La información es orientativa y no reemplaza las alertas oficiales de las autoridades ambientales.
 
@@ -16,87 +17,72 @@ Consulta mediciones de PM2.5, NO₂ y O₃ en la API v3 de OpenAQ, calcula el AQ
 ```text
 APIAQ-Back-End/
 ├── backend/
-│   ├── app/
-│   │   ├── __init__.py
-│   │   └── main.py              # API Flask y endpoint de salud (/salud)
-│   └── db/
-│       └── schema_v1.sql        # Esquema de almacenamiento versionado
-├── tests/
-│   ├── test_salud.py            # Prueba del endpoint de salud
-│   └── test_esquema.py          # Prueba de la regla de deduplicación
+│   └── app/
+│       ├── main.py              # Rutas Flask: /salud, /ubicaciones, /consultar
+│       ├── cliente_openaq.py    # Llamadas a OpenAQ, paginación y tiempos de espera
+│       ├── normalizacion.py     # Unidades, fechas, nulos, duplicados y datos viejos
+│       └── errores.py           # Errores JSON del contrato
+├── tests/                       # Pruebas con respuestas simuladas
 ├── docs/
-│   └── contrato_api_v1.md       # Endpoints, errores, unidades y deduplicación
-├── .github/
-│   └── workflows/
-│       └── ci.yml               # Integración continua: lint + pruebas
-├── .env.example                 # Ejemplo de configuración (sin claves reales)
-├── .gitignore
-├── pytest.ini
-├── requirements.txt             # Dependencias fijadas
+│   ├── informe_pruebas.md
+│   └── diccionario_datos.md
+├── postman/
+│   └── APIAQ.postman_collection.json
+├── .github/workflows/ci.yml
+├── .env.example
+├── requirements.txt
 └── README.md
 ```
 
-## Módulos y responsabilidades
+`GET /historial` y la descarga CSV del contrato no están en esta entrega: harían falta guardar consultas.
 
-| Módulo | Responsabilidad |
-|---|---|
-| `backend/app` | API en Python: recibe peticiones de la interfaz web y coordina la consulta. |
-| `backend/db` | Esquema de almacenamiento versionado (estaciones, mediciones, consultas). |
-| `tests` | Pruebas automáticas mínimas. |
-| `docs` | Contrato de la API y documentación técnica. |
-| `.github/workflows` | Validaciones automáticas en cada cambio. |
+## Arranque en Windows
 
-## Arranque rápido
-
-```bash
+```powershell
 git clone https://github.com/santiagonilopezlo-star/APIAQ-Back-End.git
 cd APIAQ-Back-End
 
 python -m venv .venv
-source .venv/bin/activate        # En Windows: .venv\Scripts\activate
+.venv\Scripts\activate
 pip install -r requirements.txt
 
-cp .env.example .env             # En Windows: copy .env.example .env
+copy .env.example .env
 # Edita .env y escribe tu clave de OpenAQ
 
-flask --app backend/app/main run
+python -m flask --app backend/app/main run
 ```
 
 Comprobar que responde: abrir `http://127.0.0.1:5000/salud`.
 
+En Postman: Import y elige `postman/APIAQ.postman_collection.json`. La colección usa `http://127.0.0.1:5000`.
+
 ## Configuración y seguridad
 
-La clave de OpenAQ **solo vive en el servidor**, se lee desde la variable de entorno `OPENAQ_API_KEY` y nunca se escribe en el código ni se envía al navegador.
+La clave de OpenAQ solo vive en el servidor. Se lee de la variable `OPENAQ_API_KEY` y no se escribe en el código ni se envía al navegador.
 
 | Variable | Descripción |
 |---|---|
 | `OPENAQ_API_KEY` | Clave de la API v3 de OpenAQ. Se define en `.env`, que está en `.gitignore`. |
 
-Nunca subas el archivo `.env`; usa `.env.example` como guía.
+## Endpoints de esta entrega
+
+| Método | Ruta | Respuesta |
+|---|---|---|
+| GET | `/salud` | Estado del servicio y si la clave está configurada |
+| GET | `/ubicaciones?ciudad=` | Estaciones de esa ciudad en Colombia |
+| POST | `/consultar` | Mediciones recientes. Cuerpo: `{"ciudad": "Bogota"}` |
+
+El AQI de la EPA queda en `null`: la lectura reciente no es un promedio de 24 h u 8 h y el backend no convierte unidades. La referencia de la OMS va en otro campo.
 
 ## Validaciones
 
-```bash
-ruff check .     # análisis estático (lint)
-pytest -q        # pruebas del endpoint de salud y del esquema
+```powershell
+python -m pytest -q
 ```
 
-Estos mismos comandos se ejecutan en GitHub Actions con cada `push` y `pull request`.
+GitHub Actions ejecuta esas pruebas en cada `push` y `pull request`.
 
-**Si el CI falla:** ejecuta los dos comandos anteriores en local, corrige el error que indiquen y vuelve a hacer `push`. El detalle del fallo está en la pestaña **Actions**.
+## Ramas
 
-## Flujo de trabajo y ramas
-
-- `main`: rama estable; solo recibe cambios revisados.
-- `desarrollo`: integración del trabajo en curso.
-- `feature/<tarea>`: una rama por tarea (por ejemplo `feature/mca-14-contratos`).
-- Todo cambio entra a `desarrollo` mediante *pull request* revisado por el otro integrante.
-
-## Historias de usuario relacionadas
-
-| Historia | Cubierta por |
-|---|---|
-| HU-MA-001 Consultar calidad del aire por ciudad | `POST /consultar` |
-| HU-MA-002 Interpretar PM2.5, NO₂ y O₃ | Campos `aqi_epa` y `referencia_oms` de `POST /consultar` |
-| HU-MA-003 Gráfica e historial | `GET /historial`, `GET /historial/descargar` |
-| HU-MA-004 Vista administrativa | Pendiente para una iteración posterior |
+- `main`: rama estable.
+- `develop`: integración del trabajo en curso.

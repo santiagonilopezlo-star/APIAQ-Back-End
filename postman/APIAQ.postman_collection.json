@@ -1,0 +1,98 @@
+{
+  "info": {
+    "name": "APIAQ Monitor local",
+    "description": "Pruebas en local del backend del monitor de aire. Primero arranca el servidor: python -m flask --app backend/app/main run. La clave de OpenAQ va en .env, no en esta colección.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:5000"
+    }
+  ],
+  "item": [
+    {
+      "name": "Salud",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/salud"
+      }
+    },
+    {
+      "name": "Ubicaciones con ciudad",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/ubicaciones?ciudad=Bogota"
+      }
+    },
+    {
+      "name": "Ubicaciones busqueda vacia",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/ubicaciones?ciudad="
+      }
+    },
+    {
+      "name": "Ubicaciones sin cobertura",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/ubicaciones?ciudad=CiudadInventada"
+      }
+    },
+    {
+      "name": "Consultar mediciones",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"ciudad\": \"Bogota\"\n}"
+        },
+        "url": "{{baseUrl}}/consultar"
+      }
+    },
+    {
+      "name": "Consultar ciudad vacia",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"ciudad\": \"\"\n}"
+        },
+        "url": "{{baseUrl}}/consultar"
+      }
+    },
+    {
+      "name": "Consultar sin cobertura",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"ciudad\": \"CiudadInventada\"\n}"
+        },
+        "url": "{{baseUrl}}/consultar"
+      }
+    }
+  ]
+}
