@@ -1,0 +1,22 @@
+{
+  "meta": {"page": 1, "limit": 1, "found": 2},
+  "results": [
+    {
+      "id": 10,
+      "name": "Estacion Centro",
+      "locality": "Bogotá",
+      "coordinates": {"latitude": 4.65, "longitude": -74.08},
+      "sensors": [
+        {
+          "id": 100,
+          "parameter": {
+            "id": 2,
+            "name": "pm25",
+            "units": "µg/m³",
+            "displayName": "PM2.5"
+          }
+        }
+      ]
+    }
+  ]
+}

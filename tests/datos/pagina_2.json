@@ -1,0 +1,12 @@
+{
+  "meta": {"page": 2, "limit": 1, "found": 2},
+  "results": [
+    {
+      "id": 11,
+      "name": "Estacion Norte",
+      "locality": "Medellín",
+      "coordinates": {"latitude": 6.25, "longitude": -75.56},
+      "sensors": []
+    }
+  ]
+}
