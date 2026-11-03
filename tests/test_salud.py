@@ -3,9 +3,10 @@ import os
 from backend.app.main import crear_app
 
 
-def test_salud_responde_ok(monkeypatch):
+def test_salud_responde_ok(monkeypatch, tmp_path):
     monkeypatch.delenv("OPENAQ_API_KEY", raising=False)
-    cliente = crear_app().test_client()
+    monkeypatch.setattr("backend.app.main.load_dotenv", lambda: None)
+    cliente = crear_app(ruta_db=tmp_path / "salud.db").test_client()
 
     respuesta = cliente.get("/salud")
     datos = respuesta.get_json()
@@ -17,9 +18,9 @@ def test_salud_responde_ok(monkeypatch):
     assert datos["openaq_configurado"] is False
 
 
-def test_salud_indica_si_hay_clave_sin_mostrarla(monkeypatch):
+def test_salud_indica_si_hay_clave_sin_mostrarla(monkeypatch, tmp_path):
     monkeypatch.setenv("OPENAQ_API_KEY", "clave-secreta-de-prueba")
-    cliente = crear_app().test_client()
+    cliente = crear_app(ruta_db=tmp_path / "salud2.db").test_client()
 
     respuesta = cliente.get("/salud")
     texto = respuesta.get_data(as_text=True)

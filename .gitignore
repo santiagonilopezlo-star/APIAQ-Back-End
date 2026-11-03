@@ -8,3 +8,5 @@ __pycache__/
 *.egg-info/
 .idea/
 .vscode/
+*.db
+backend/db/monitor.db

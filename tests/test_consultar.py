@@ -46,8 +46,12 @@ def cliente_bogota(valor=12.5, dias=1, unidad="µg/m³"):
     return ClienteConsulta(lugares, {10: lectura})
 
 
-def test_consultar_devuelve_medicion_sin_convertir():
-    app = crear_app(cliente_bogota()).test_client()
+def app_cliente(cliente, tmp_path):
+    return crear_app(cliente=cliente, ruta_db=tmp_path / "test.db").test_client()
+
+
+def test_consultar_devuelve_medicion_sin_convertir(tmp_path):
+    app = app_cliente(cliente_bogota(), tmp_path)
     respuesta = app.post("/consultar", json={"ciudad": "Bogotá"})
     datos = respuesta.get_json()
 
@@ -60,13 +64,16 @@ def test_consultar_devuelve_medicion_sin_convertir():
     assert datos["mediciones"][0]["periodo"] == "1h"
     assert datos["mediciones"][0]["estacion_id"] == "10"
     assert datos["aqi_epa"]["indice"] is None
-    assert "no se convierte" in datos["aqi_epa"]["motivo"]
-    assert datos["referencia_oms"]["estado"] == "separada"
+    assert datos["aqi_epa"]["estandar"] == "US EPA AQI"
+    assert "compatibles" in datos["aqi_epa"]["motivo"]
+    assert datos["referencia_oms"]["estado"] == "dato_insuficiente"
+    assert datos["referencia_oms"]["separada_del_aqi"] is True
     assert datos["aqi_epa"] != datos["referencia_oms"]
+    assert app.get("/historial").get_json()[0]["resultado"] == "ok"
 
 
-def test_ciudad_invalida():
-    app = crear_app(ClienteConsulta([])).test_client()
+def test_ciudad_invalida(tmp_path):
+    app = app_cliente(ClienteConsulta([]), tmp_path)
 
     vacia = app.post("/consultar", json={"ciudad": ""})
     numeros = app.post("/consultar", json={"ciudad": "Cali 1"})
@@ -77,22 +84,29 @@ def test_ciudad_invalida():
         assert respuesta.get_json()["error"] == "ciudad_invalida"
 
 
-def test_sin_datos_si_no_hay_cobertura_o_estan_viejos():
-    sin_ciudad = crear_app(cliente_bogota()).test_client()
-    viejos = crear_app(cliente_bogota(dias=30)).test_client()
-
+def test_sin_datos_si_no_hay_cobertura(tmp_path):
+    sin_ciudad = app_cliente(cliente_bogota(), tmp_path)
     falta = sin_ciudad.post("/consultar", json={"ciudad": "Cali"})
-    antiguo = viejos.post("/consultar", json={"ciudad": "Bogota"})
 
     assert falta.status_code == 404
-    assert antiguo.status_code == 404
     assert falta.get_json()["error"] == "sin_datos"
-    assert antiguo.get_json()["error"] == "sin_datos"
+    assert sin_ciudad.get("/historial").get_json() == []
 
 
-def test_openaq_no_disponible():
+def test_consulta_conserva_medicion_antigua(tmp_path):
+    respuesta = app_cliente(cliente_bogota(dias=400), tmp_path).post(
+        "/consultar", json={"ciudad": "Bogota"}
+    )
+    datos = respuesta.get_json()
+
+    assert respuesta.status_code == 200
+    assert datos["mediciones"][0]["valor"] == 12.5
+    assert datos["mediciones"][0]["fecha_medicion"]
+
+
+def test_openaq_no_disponible(tmp_path):
     cliente = ClienteConsulta([], error=ErrorOpenAQ("clave-interna"))
-    respuesta = crear_app(cliente).test_client().post("/consultar", json={"ciudad": "Cali"})
+    respuesta = app_cliente(cliente, tmp_path).post("/consultar", json={"ciudad": "Cali"})
     texto = respuesta.get_data(as_text=True)
 
     assert respuesta.status_code == 502
@@ -100,9 +114,9 @@ def test_openaq_no_disponible():
     assert "clave-interna" not in texto
 
 
-def test_error_interno_no_muestra_el_detalle():
+def test_error_interno_no_muestra_el_detalle(tmp_path):
     cliente = ClienteConsulta([], explota=True)
-    respuesta = crear_app(cliente).test_client().post("/consultar", json={"ciudad": "Cali"})
+    respuesta = app_cliente(cliente, tmp_path).post("/consultar", json={"ciudad": "Cali"})
     texto = respuesta.get_data(as_text=True)
 
     assert respuesta.status_code == 500

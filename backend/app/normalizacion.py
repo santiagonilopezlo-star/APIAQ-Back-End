@@ -1,8 +1,7 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 CONTAMINANTES = {"pm25", "no2", "o3"}
 PERIODOS = {"1h", "8h", "24h"}
-DIAS_MAXIMOS = 7
 
 
 def parsear_fecha(valor):
@@ -25,13 +24,8 @@ def _fecha_iso(fecha):
     return fecha.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def normalizar_mediciones(crudas, ahora=None):
-    """Deja solo mediciones utilizables. La unidad se conserva tal como llega."""
-    if ahora is None:
-        ahora = datetime.now(timezone.utc)
-    elif ahora.tzinfo is None:
-        ahora = ahora.replace(tzinfo=timezone.utc)
-
+def normalizar_mediciones(crudas):
+    """Deja solo mediciones utilizables. La unidad y la fecha se conservan."""
     buenas = []
     avisos = []
     vistas = set()
@@ -89,12 +83,6 @@ def normalizar_mediciones(crudas, ahora=None):
         fecha = parsear_fecha(item["fecha_medicion"])
         if fecha is None:
             avisos.append({"tipo": "fecha_invalida", "detalle": "fecha no reconocida"})
-            continue
-
-        if ahora - fecha > timedelta(days=DIAS_MAXIMOS):
-            avisos.append(
-                {"tipo": "dato_antiguo", "detalle": "la medicion tiene mas de 7 dias"}
-            )
             continue
 
         fecha_iso = _fecha_iso(fecha)

@@ -24,10 +24,14 @@ class ClienteFalso:
         return self.lugares
 
 
-def test_ubicaciones_con_resultados():
+def app_cliente(cliente, tmp_path):
+    return crear_app(cliente=cliente, ruta_db=tmp_path / "ubi.db").test_client()
+
+
+def test_ubicaciones_con_resultados(tmp_path):
     lugares = cargar("pagina_1.json")["results"] + cargar("pagina_2.json")["results"]
     cliente = ClienteFalso(lugares)
-    respuesta = crear_app(cliente).test_client().get("/ubicaciones?ciudad=Bogota")
+    respuesta = app_cliente(cliente, tmp_path).get("/ubicaciones?ciudad=Bogota")
     datos = respuesta.get_json()
 
     assert respuesta.status_code == 200
@@ -44,17 +48,17 @@ def test_ubicaciones_con_resultados():
     ]
 
 
-def test_ubicaciones_sin_cobertura():
+def test_ubicaciones_sin_cobertura(tmp_path):
     cliente = ClienteFalso(cargar("pagina_1.json")["results"])
-    respuesta = crear_app(cliente).test_client().get("/ubicaciones?ciudad=Cali")
+    respuesta = app_cliente(cliente, tmp_path).get("/ubicaciones?ciudad=Cali")
 
     assert respuesta.status_code == 200
     assert respuesta.get_json() == []
 
 
-def test_busqueda_vacia():
+def test_busqueda_vacia(tmp_path):
     cliente = ClienteFalso([])
-    app = crear_app(cliente).test_client()
+    app = app_cliente(cliente, tmp_path)
 
     vacia = app.get("/ubicaciones?ciudad=")
     ausente = app.get("/ubicaciones")
@@ -66,9 +70,9 @@ def test_busqueda_vacia():
     assert cliente.iso is None
 
 
-def test_openaq_caido_en_ubicaciones():
+def test_openaq_caido_en_ubicaciones(tmp_path):
     cliente = ClienteFalso(error=ErrorOpenAQ("clave-no-mostrar"))
-    respuesta = crear_app(cliente).test_client().get("/ubicaciones?ciudad=Medellin")
+    respuesta = app_cliente(cliente, tmp_path).get("/ubicaciones?ciudad=Medellin")
     cuerpo = respuesta.get_data(as_text=True)
 
     assert respuesta.status_code == 502
