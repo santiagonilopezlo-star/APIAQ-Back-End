@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "APIAQ Monitor local",
-    "description": "Pruebas en local del backend del monitor de aire. Primero arranca el servidor: python -m flask --app backend/app/main run. La clave de OpenAQ va en .env, no en esta colección.",
+    "description": "Evidencias locales del monitor de aire. Arranque: python -m flask --app backend/app/main run. Clave OpenAQ solo en .env.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -12,7 +12,7 @@
   ],
   "item": [
     {
-      "name": "Salud",
+      "name": "01 Salud",
       "request": {
         "method": "GET",
         "header": [],
@@ -20,15 +20,15 @@
       }
     },
     {
-      "name": "Ubicaciones con ciudad",
+      "name": "02 Ubicaciones Medellin",
       "request": {
         "method": "GET",
         "header": [],
-        "url": "{{baseUrl}}/ubicaciones?ciudad=Bogota"
+        "url": "{{baseUrl}}/ubicaciones?ciudad=Medellin"
       }
     },
     {
-      "name": "Ubicaciones busqueda vacia",
+      "name": "03 Ubicaciones busqueda vacia",
       "request": {
         "method": "GET",
         "header": [],
@@ -36,7 +36,7 @@
       }
     },
     {
-      "name": "Ubicaciones sin cobertura",
+      "name": "04 Ubicaciones sin cobertura",
       "request": {
         "method": "GET",
         "header": [],
@@ -44,7 +44,24 @@
       }
     },
     {
-      "name": "Consultar mediciones",
+      "name": "05 Consultar Medellin AQI y OMS",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"ciudad\": \"Medellin\"\n}"
+        },
+        "url": "{{baseUrl}}/consultar"
+      }
+    },
+    {
+      "name": "06 Consultar Bogota",
       "request": {
         "method": "POST",
         "header": [
@@ -61,7 +78,7 @@
       }
     },
     {
-      "name": "Consultar ciudad vacia",
+      "name": "07 Consultar ciudad vacia",
       "request": {
         "method": "POST",
         "header": [
@@ -78,7 +95,7 @@
       }
     },
     {
-      "name": "Consultar sin cobertura",
+      "name": "08 Consultar sin cobertura",
       "request": {
         "method": "POST",
         "header": [
@@ -92,6 +109,38 @@
           "raw": "{\n  \"ciudad\": \"CiudadInventada\"\n}"
         },
         "url": "{{baseUrl}}/consultar"
+      }
+    },
+    {
+      "name": "09 Historial consultas",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/historial"
+      }
+    },
+    {
+      "name": "10 Historial mediciones filtros",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/historial/mediciones?contaminante=pm25&desde=2020-01-01T00:00:00Z&hasta=2030-01-01T00:00:00Z"
+      }
+    },
+    {
+      "name": "11 Historial mediciones rango vacio",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/historial/mediciones?desde=2030-01-01T00:00:00Z&hasta=2030-01-02T00:00:00Z"
+      }
+    },
+    {
+      "name": "12 Historial descargar CSV",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/historial/descargar"
       }
     }
   ]

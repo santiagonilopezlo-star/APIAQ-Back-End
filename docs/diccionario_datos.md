@@ -50,16 +50,45 @@ No salen en la API. Sirven para las pruebas y para decidir si la consulta queda 
 |---|---|
 | `dato_nulo` | Falta valor, contaminante, unidad, fecha, estación o fuente, o el valor no es numérico |
 | `duplicado` | Ya se vio la misma estación, contaminante, periodo y fecha |
-| `dato_antiguo` | La fecha tiene más de 7 días |
 | `fecha_invalida` | La fecha no es ISO-8601 con zona horaria |
 | `conversion_rechazada` | La medición pide convertir la unidad |
 | `informacion_insuficiente` | Contaminante o periodo fuera de `pm25`/`no2`/`o3` y `1h`/`8h`/`24h` |
+
+## AQI EPA (`aqi_epa` en `POST /consultar`)
+
+| Campo | Notas |
+|---|---|
+| `indice` | Entero 0-500, o `null` si unidad/periodo no son compatibles |
+| `categoria` | Buena / Moderada / Dañina... o `null` |
+| `estandar` | Siempre `US EPA AQI` |
+| `motivo` | Explica por qué no se calcula (si aplica) |
+| `contaminante` | Contaminante que definió el índice, si hubo cálculo |
+
+Compatible: PM2.5 24h µg/m³; O3 1h/8h ppm; NO2 1h ppb. Sin conversión.
+
+## Referencia OMS (`referencia_oms`)
+
+| Campo | Notas |
+|---|---|
+| `estado` | `dentro_guia`, `sobre_guia`, `dato_insuficiente` o `guia_no_aplicable` |
+| `version` / `guia` | `OMS AQG 2021` |
+| `periodo_guia` | `24h`, `8h` o `anual` según contaminante |
+| `valor_guia` | Umbral sanitario |
+| `diferencia` | valor_medido − valor_guia (si comparable) |
+| `separada_del_aqi` | Siempre `true` |
+
+## Historial
+
+`consultas`: fecha_consulta, ciudad, resultado, fuente.  
+`mediciones`: UNIQUE `(estacion_id, contaminante, periodo, fecha_medicion)`. Fechas UTC con `Z`.
 
 ## Errores
 
 | HTTP | `error` | Cuándo |
 |---|---|---|
 | 400 | `ciudad_invalida` | Ciudad ausente, vacía o con números o símbolos |
-| 404 | `sin_datos` | No hay estación en Colombia para esa ciudad, o ninguna medición reciente usable |
+| 400 | `consulta_invalida` | Contaminante de filtro inválido en historial |
+| 404 | `sin_datos` | No hay estación/medición usable para esa ciudad |
+| 404 | `historial_vacio` | Descarga CSV sin registros |
 | 502 | `openaq_no_disponible` | Timeout, sin conexión, HTTP 429 o error 5xx de OpenAQ |
 | 500 | `error_interno` | Falla inesperada. El mensaje no incluye el detalle interno |

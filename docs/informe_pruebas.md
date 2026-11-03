@@ -17,7 +17,7 @@ Cubren:
 - `GET /salud` con y sin `OPENAQ_API_KEY`, sin devolver la clave.
 - Cliente: encabezado `X-API-Key`, timeout, páginas, tope de 5 páginas, HTTP 429 sin reintento, HTTP 503, JSON inválido y JSON sin `results`.
 - `GET /ubicaciones`: ciudad con resultado, ciudad sin cobertura (`[]`) y ciudad vacía o con números (400).
-- Normalización: unidad `µg/m³` y `ppm` sin convertir, fecha con offset a UTC, nulos, duplicados y datos de más de 7 días.
+- Normalización: unidad `µg/m³` y `ppm` sin convertir, fecha con offset a UTC, nulos y duplicados. Una fecha antigua no se descarta.
 - `POST /consultar`: medición, ciudad inválida, sin datos, OpenAQ caído (502) y error interno (500) sin mostrar el detalle.
 
 ## Consulta real a Colombia
@@ -96,7 +96,7 @@ Si la ciudad es válida y no hay estaciones, la lista va vacía: `[]`.
 Error:
 
 ```json
-{"error": "sin_datos", "mensaje": "No hay mediciones recientes de PM2.5, NO2 u O3 para esa ciudad."}
+{"error": "sin_datos", "mensaje": "No hay mediciones de PM2.5, NO2 u O3 para esa ciudad."}
 ```
 
 ## Diferencias frente al contrato v1

@@ -3,7 +3,7 @@
 [![CI](https://github.com/santiagonilopezlo-star/APIAQ-Back-End/actions/workflows/ci.yml/badge.svg)](https://github.com/santiagonilopezlo-star/APIAQ-Back-End/actions/workflows/ci.yml)
 
 Backend en Python del proyecto académico **Monitor de Calidad del Aire** (Universidad ECCI, Electiva I - Python).
-Consulta en vivo la API v3 de OpenAQ para estaciones de Colombia y devuelve PM2.5, NO₂ y O₃. No hay base de datos: cada petición va directo a OpenAQ.
+Consulta OpenAQ v3, calcula AQI EPA cuando unidad y periodo son compatibles, compara por separado con la guía OMS AQG 2021 y guarda historial en SQLite.
 
 - **Equipo:** Johan Stwee Salgado Rodríguez · Santiago Nicolás López López
 - **Interfaz web:** repositorio [-APIAQ-Front-End](https://github.com/santiagonilopezlo-star/-APIAQ-Front-End)
@@ -17,24 +17,24 @@ Consulta en vivo la API v3 de OpenAQ para estaciones de Colombia y devuelve PM2.
 ```text
 APIAQ-Back-End/
 ├── backend/
-│   └── app/
-│       ├── main.py              # Rutas Flask: /salud, /ubicaciones, /consultar
-│       ├── cliente_openaq.py    # Llamadas a OpenAQ, paginación y tiempos de espera
-│       ├── normalizacion.py     # Unidades, fechas, nulos, duplicados y datos viejos
-│       └── errores.py           # Errores JSON del contrato
-├── tests/                       # Pruebas con respuestas simuladas
+│   ├── app/
+│   │   ├── main.py
+│   │   ├── cliente_openaq.py
+│   │   ├── normalizacion.py
+│   │   ├── aqi.py
+│   │   ├── oms.py
+│   │   ├── almacen.py
+│   │   └── errores.py
+│   └── db/
+│       ├── schema_v1.sql
+│       └── monitor.db          # se crea al correr; no se sube a Git
+├── tests/
 ├── docs/
-│   ├── informe_pruebas.md
-│   └── diccionario_datos.md
 ├── postman/
-│   └── APIAQ.postman_collection.json
-├── .github/workflows/ci.yml
 ├── .env.example
 ├── requirements.txt
 └── README.md
 ```
-
-`GET /historial` y la descarga CSV del contrato no están en esta entrega: harían falta guardar consultas.
 
 ## Arranque en Windows
 
@@ -52,27 +52,21 @@ copy .env.example .env
 python -m flask --app backend/app/main run
 ```
 
-Comprobar que responde: abrir `http://127.0.0.1:5000/salud`.
+Comprobar: `http://127.0.0.1:5000/salud`.  
+Postman: Import → `postman/APIAQ.postman_collection.json`.
 
-En Postman: Import y elige `postman/APIAQ.postman_collection.json`. La colección usa `http://127.0.0.1:5000`.
-
-## Configuración y seguridad
-
-La clave de OpenAQ solo vive en el servidor. Se lee de la variable `OPENAQ_API_KEY` y no se escribe en el código ni se envía al navegador.
-
-| Variable | Descripción |
-|---|---|
-| `OPENAQ_API_KEY` | Clave de la API v3 de OpenAQ. Se define en `.env`, que está en `.gitignore`. |
-
-## Endpoints de esta entrega
+## Endpoints
 
 | Método | Ruta | Respuesta |
 |---|---|---|
-| GET | `/salud` | Estado del servicio y si la clave está configurada |
-| GET | `/ubicaciones?ciudad=` | Estaciones de esa ciudad en Colombia |
-| POST | `/consultar` | Mediciones recientes. Cuerpo: `{"ciudad": "Bogota"}` |
+| GET | `/salud` | Estado del servicio |
+| GET | `/ubicaciones?ciudad=` | Estaciones en Colombia |
+| POST | `/consultar` | Mediciones + `aqi_epa` + `referencia_oms`; guarda historial si sale bien |
+| GET | `/historial` | Consultas guardadas, más reciente primero |
+| GET | `/historial/descargar` | CSV del historial |
+| GET | `/historial/mediciones` | Mediciones con filtros `estacion_id`, `contaminante`, `desde`, `hasta` |
 
-El AQI de la EPA queda en `null`: la lectura reciente no es un promedio de 24 h u 8 h y el backend no convierte unidades. La referencia de la OMS va en otro campo.
+AQI EPA solo si unidad y periodo coinciden (PM2.5 24h µg/m³, O3 1h/8h ppm, NO2 1h ppb). Sin conversión de unidades. OMS va en campo aparte.
 
 ## Validaciones
 
@@ -80,9 +74,7 @@ El AQI de la EPA queda en `null`: la lectura reciente no es un promedio de 24 h 
 python -m pytest -q
 ```
 
-GitHub Actions ejecuta esas pruebas en cada `push` y `pull request`.
-
 ## Ramas
 
-- `main`: rama estable.
-- `develop`: integración del trabajo en curso.
+- `main`: estable
+- `develop`: trabajo en curso
