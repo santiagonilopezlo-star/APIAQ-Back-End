@@ -10,3 +10,6 @@ __pycache__/
 .vscode/
 *.db
 backend/db/monitor.db
+interfaz/salida/
+*.png
+!tests/**/*.png

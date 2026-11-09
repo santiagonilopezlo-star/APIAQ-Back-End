@@ -28,6 +28,9 @@ APIAQ-Back-End/
 │   └── db/
 │       ├── schema_v1.sql
 │       └── monitor.db          # se crea al correr; no se sube a Git
+├── interfaz/
+│   ├── monitor_aire.py      # Tkinter: buscar estación, resultados, errores
+│   └── analisis.py          # pandas + matplotlib (historial y resumen)
 ├── tests/
 ├── docs/
 ├── postman/
@@ -54,6 +57,16 @@ python -m flask --app backend/app/main run
 
 Comprobar: `http://127.0.0.1:5000/salud`.  
 Postman: Import → `postman/APIAQ.postman_collection.json`.
+
+### Interfaz de escritorio (pandas + matplotlib)
+
+Con el backend corriendo, en otra terminal:
+
+```powershell
+python -m interfaz.monitor_aire
+```
+
+Flujo: buscar ciudad → elegir estación → consultar mediciones/AQI/OMS → graficar historial con filtros. Enter busca; `Ctrl+R` reintenta. No muestra claves ni errores internos.
 
 ## Endpoints
 
