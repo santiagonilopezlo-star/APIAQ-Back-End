@@ -142,6 +142,22 @@
         "header": [],
         "url": "{{baseUrl}}/historial/descargar"
       }
+    },
+    {
+      "name": "13 Reporte grafica PNG",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/reportes/grafica?contaminante=pm25&desde=2020-01-01T00:00:00Z&hasta=2030-01-01T00:00:00Z"
+      }
+    },
+    {
+      "name": "14 Reporte estadisticas PNG",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/reportes/estadisticas?desde=2020-01-01T00:00:00Z&hasta=2030-01-01T00:00:00Z"
+      }
     }
   ]
 }

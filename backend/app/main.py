@@ -1,9 +1,10 @@
 import os
 import unicodedata
 from datetime import datetime, timezone
+from pathlib import Path
 
 from dotenv import load_dotenv
-from flask import Flask, jsonify, request, Response
+from flask import Flask, jsonify, request, Response, send_from_directory
 
 from backend.app.almacen import Almacen
 from backend.app.aqi import calcular_aqi
@@ -11,10 +12,12 @@ from backend.app.cliente_openaq import ClienteOpenAQ, ErrorOpenAQ
 from backend.app.errores import respuesta_error
 from backend.app.normalizacion import normalizar_mediciones
 from backend.app.oms import comparar_oms
+from backend.app.reportes import generar_imagen_estadisticas, generar_imagen_historial
 
 VERSION = "0.1.0"
 MAX_ESTACIONES = 5
 CONTAMINANTES = {"pm25", "no2", "o3"}
+CARPETA_STATIC = Path(__file__).resolve().parents[1] / "static"
 
 
 def quitar_tildes(texto):
@@ -247,6 +250,69 @@ def crear_app(cliente=None, almacen=None, ruta_db=None):
             hasta=hasta,
         )
         return jsonify(filas)
+
+    def _filtros_historial():
+        estacion_id = request.args.get("estacion_id") or None
+        contaminante = request.args.get("contaminante") or None
+        desde = request.args.get("desde") or None
+        hasta = request.args.get("hasta") or None
+        if contaminante and contaminante not in CONTAMINANTES:
+            return None, respuesta_error(
+                "consulta_invalida",
+                "El contaminante debe ser pm25, no2 u o3.",
+                400,
+            )
+        filas = app.almacen.listar_mediciones(
+            estacion_id=estacion_id,
+            contaminante=contaminante,
+            desde=desde,
+            hasta=hasta,
+        )
+        return {
+            "filas": filas,
+            "estacion_id": estacion_id,
+            "contaminante": contaminante or "pm25",
+        }, None
+
+    @app.get("/reportes/grafica")
+    def reportes_grafica():
+        """Genera PNG del historial, la guarda en backend/static/graficas y devuelve URL."""
+        datos, error = _filtros_historial()
+        if error:
+            return error
+        resultado = generar_imagen_historial(
+            datos["filas"],
+            contaminante=datos["contaminante"],
+            estacion_id=datos["estacion_id"],
+        )
+        if resultado["estado"] == "vacio":
+            return respuesta_error(
+                "sin_datos",
+                "No hay mediciones para generar la grafica.",
+                404,
+            )
+        return jsonify(resultado)
+
+    @app.get("/reportes/estadisticas")
+    def reportes_estadisticas():
+        """Genera PNG de estadisticas con pandas/matplotlib y la guarda en el back."""
+        datos, error = _filtros_historial()
+        if error:
+            return error
+        resultado = generar_imagen_estadisticas(datos["filas"])
+        if resultado["estado"] == "vacio":
+            return respuesta_error(
+                "sin_datos",
+                "No hay mediciones para generar estadisticas.",
+                404,
+            )
+        return jsonify(resultado)
+
+    @app.get("/static/graficas/<path:nombre>")
+    def servir_grafica(nombre):
+        carpeta = CARPETA_STATIC / "graficas"
+        carpeta.mkdir(parents=True, exist_ok=True)
+        return send_from_directory(carpeta, nombre)
 
     return app
 

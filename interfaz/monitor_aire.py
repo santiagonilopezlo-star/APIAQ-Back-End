@@ -7,20 +7,13 @@ Habla con el backend local Flask. No muestra claves ni detalles internos.
 
 import os
 import tkinter as tk
+from io import BytesIO
 from tkinter import messagebox, ttk
 
-import matplotlib
-
-matplotlib.use("TkAgg")
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import requests
+from PIL import Image, ImageTk
 
-from interfaz.analisis import (
-    exportar_reporte_excel,
-    generar_grafica_historial,
-    mediciones_a_dataframe,
-    resumen_consulta,
-)
+from interfaz.analisis import exportar_reporte_excel, mediciones_a_dataframe
 
 URL_BASE = os.environ.get("APIAQ_URL", "http://127.0.0.1:5000")
 CONTAMINANTES = ("pm25", "no2", "o3")
@@ -129,6 +122,11 @@ class MonitorAire:
             fila_filtros, text="Graficar historial", command=self.graficar_historial, bg="#fab1a0"
         )
         self.btn_grafica.pack(side="left", padx=6)
+
+        self.btn_stats = tk.Button(
+            fila_filtros, text="Estadisticas PNG", command=self.mostrar_estadisticas, bg="#a29bfe"
+        )
+        self.btn_stats.pack(side="left", padx=4)
 
         self.btn_excel = tk.Button(
             fila_filtros, text="Exportar Excel", command=self.exportar_excel, bg="#ffeaa7"
@@ -298,7 +296,7 @@ class MonitorAire:
             lineas.append(oms.get("detalle_aqi"))
         return "\n".join(lineas)
 
-    def graficar_historial(self):
+    def _params_historial(self):
         contaminante = self.combo_contaminante.get().strip() or "pm25"
         desde = self.entrada_desde.get().strip()
         hasta = self.entrada_hasta.get().strip()
@@ -306,58 +304,89 @@ class MonitorAire:
         params = f"contaminante={contaminante}&desde={desde}&hasta={hasta}"
         if estacion:
             params += f"&estacion_id={estacion.get('id')}"
+        return params, contaminante
 
-        self.mostrar_estado("Cargando historial...")
+    def _mostrar_png_desde_url(self, url_relativa, titulo):
+        for widget in self.frame_grafico.winfo_children():
+            widget.destroy()
         try:
-            respuesta = self.pedir("GET", f"/historial/mediciones?{params}")
+            respuesta = self.pedir("GET", url_relativa)
+            if respuesta.status_code != 200:
+                raise RuntimeError("imagen no disponible")
+            imagen = Image.open(BytesIO(respuesta.content))
+            imagen.thumbnail((920, 420))
+            self._foto = ImageTk.PhotoImage(imagen)
+            tk.Label(self.frame_grafico, image=self._foto, bg="white").pack(expand=True)
+            tk.Label(
+                self.frame_grafico,
+                text=f"{titulo}\nGuardada en backend{url_relativa}",
+                bg="white",
+                fg="#2d3436",
+            ).pack()
+        except Exception:
+            tk.Label(
+                self.frame_grafico,
+                text="No se pudo mostrar la imagen guardada en el backend.",
+                bg="white",
+                fg="#c0392b",
+            ).pack(expand=True)
+
+    def graficar_historial(self):
+        params, contaminante = self._params_historial()
+        self.mostrar_estado("Generando grafica PNG en el backend...")
+        try:
+            respuesta = self.pedir("GET", f"/reportes/grafica?{params}")
         except requests.RequestException:
-            self.mostrar_estado("Error al leer historial.", error=True)
-            messagebox.showerror("Error", "No se pudo leer el historial.")
+            self.mostrar_estado("Error al generar grafica.", error=True)
+            messagebox.showerror("Error", "No se pudo generar la grafica.")
             return
 
         if respuesta.status_code != 200:
             texto = self.mensaje_api(respuesta)
             self.mostrar_estado(texto, error=True)
-            messagebox.showwarning("Historial", texto)
-            return
-
-        filas = respuesta.json()
-        df = mediciones_a_dataframe(filas)
-        resumen = resumen_consulta(df, contaminante)
-        self.lbl_resumen.config(
-            text=(
-                f"Resumen: estado={resumen['estado']} | total={resumen['total']} | "
-                f"promedio={resumen['promedio']} | min={resumen['minimo']} | "
-                f"max={resumen['maximo']} | {resumen['detalle']}"
-            )
-        )
-
-        for widget in self.frame_grafico.winfo_children():
-            widget.destroy()
-
-        if resumen["estado"] == "vacio":
-            vacio = tk.Label(
+            for widget in self.frame_grafico.winfo_children():
+                widget.destroy()
+            tk.Label(
                 self.frame_grafico,
-                text="Estado vacio: no hay puntos para graficar.\n"
-                "Consulta una ciudad primero o cambia el rango.",
+                text="Estado vacio: no hay puntos para graficar.\nConsulta una ciudad primero.",
                 bg="white",
                 fg="#7f8c8d",
                 font=("Arial", 11),
-            )
-            vacio.pack(expand=True)
-            self.mostrar_estado("Historial vacio para esos filtros.", error=True)
+            ).pack(expand=True)
             return
 
-        fig = generar_grafica_historial(
-            df,
-            contaminante,
-            ruta_salida=os.path.join("interfaz", "salida", f"historial_{contaminante}.png"),
-            titulo=f"Historial {contaminante} (sin inventar huecos)",
+        datos = respuesta.json()
+        resumen = datos.get("resumen") or {}
+        self.lbl_resumen.config(
+            text=(
+                f"Resumen: estado={resumen.get('estado')} | total={resumen.get('total')} | "
+                f"promedio={resumen.get('promedio')} | min={resumen.get('minimo')} | "
+                f"max={resumen.get('maximo')} | PNG={datos.get('url')}"
+            )
         )
-        self.canvas_grafico = FigureCanvasTkAgg(fig, master=self.frame_grafico)
-        self.canvas_grafico.draw()
-        self.canvas_grafico.get_tk_widget().pack(fill="both", expand=True)
-        self.mostrar_estado("Grafica lista. Ejes etiquetados; huecos no rellenados.")
+        self._mostrar_png_desde_url(datos["url"], f"Historial {contaminante}")
+        self.mostrar_estado(f"Grafica guardada en el back: {datos.get('url')}")
+
+    def mostrar_estadisticas(self):
+        params, _contaminante = self._params_historial()
+        self.mostrar_estado("Generando estadisticas PNG en el backend...")
+        try:
+            respuesta = self.pedir("GET", f"/reportes/estadisticas?{params}")
+        except requests.RequestException:
+            self.mostrar_estado("Error al generar estadisticas.", error=True)
+            messagebox.showerror("Error", "No se pudieron generar estadisticas.")
+            return
+
+        if respuesta.status_code != 200:
+            texto = self.mensaje_api(respuesta)
+            self.mostrar_estado(texto, error=True)
+            messagebox.showwarning("Estadisticas", texto)
+            return
+
+        datos = respuesta.json()
+        self.lbl_resumen.config(text=f"Estadisticas PNG={datos.get('url')} | tabla={datos.get('tabla')}")
+        self._mostrar_png_desde_url(datos["url"], "Estadisticas por contaminante")
+        self.mostrar_estado(f"Estadisticas guardadas en el back: {datos.get('url')}")
 
     def exportar_excel(self):
         contaminante = self.combo_contaminante.get().strip() or "pm25"

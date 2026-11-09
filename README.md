@@ -52,11 +52,14 @@ pip install -r requirements.txt
 copy .env.example .env
 # Edita .env y escribe tu clave de OpenAQ
 
+# Desde la carpeta del proyecto (NO ejecutes main.py directo)
 python -m flask --app backend/app/main run
 ```
 
 Comprobar: `http://127.0.0.1:5000/salud`.  
 Postman: Import → `postman/APIAQ.postman_collection.json`.
+
+**Importante:** no uses `python backend/app/main.py`. Ese camino rompe los imports (`No module named 'backend'`).
 
 ### Interfaz de escritorio (pandas + matplotlib)
 
@@ -66,7 +69,8 @@ Con el backend corriendo, en otra terminal:
 python -m interfaz.monitor_aire
 ```
 
-Flujo: buscar ciudad → elegir estación → consultar mediciones/AQI/OMS → graficar historial con filtros. Enter busca; `Ctrl+R` reintenta. No muestra claves ni errores internos.
+Flujo: buscar ciudad → elegir estación → consultar → graficar/estadísticas.  
+Las imágenes se guardan en `backend/static/graficas/` y se sirven en `/static/graficas/...`.
 
 ## Endpoints
 
@@ -78,6 +82,9 @@ Flujo: buscar ciudad → elegir estación → consultar mediciones/AQI/OMS → g
 | GET | `/historial` | Consultas guardadas, más reciente primero |
 | GET | `/historial/descargar` | CSV del historial |
 | GET | `/historial/mediciones` | Mediciones con filtros `estacion_id`, `contaminante`, `desde`, `hasta` |
+| GET | `/reportes/grafica` | Genera PNG de historial y la guarda en el back; responde `url` |
+| GET | `/reportes/estadisticas` | Genera PNG de estadísticas y la guarda en el back; responde `url` |
+| GET | `/static/graficas/<archivo>` | Sirve la imagen PNG guardada |
 
 AQI EPA solo si unidad y periodo coinciden (PM2.5 24h µg/m³, O3 1h/8h ppm, NO2 1h ppb). Sin conversión de unidades. OMS va en campo aparte.
 

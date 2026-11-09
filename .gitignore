@@ -11,5 +11,7 @@ __pycache__/
 *.db
 backend/db/monitor.db
 interfaz/salida/
+backend/static/graficas/*.png
 *.png
 !tests/**/*.png
+!backend/static/graficas/.gitkeep
