@@ -35,9 +35,14 @@ def filas():
 
 
 def test_genera_png_historial_en_static():
-    resultado = generar_imagen_historial(filas(), contaminante="pm25", estacion_id="10")
+    resultado = generar_imagen_historial(
+        filas(),
+        contaminante="pm25",
+        estacion_id="10",
+        base_url="http://127.0.0.1:5000/",
+    )
     assert resultado["estado"] == "ok"
-    assert resultado["url"].startswith("/static/graficas/")
+    assert resultado["url"].startswith("http://127.0.0.1:5000/static/graficas/")
     assert resultado["archivo"].endswith(".png")
     from pathlib import Path
 
@@ -45,9 +50,13 @@ def test_genera_png_historial_en_static():
 
 
 def test_genera_png_estadisticas():
-    resultado = generar_imagen_estadisticas(filas())
+    resultado = generar_imagen_estadisticas(
+        filas(),
+        base_url="http://127.0.0.1:5000/",
+    )
     assert resultado["estado"] == "ok"
     assert resultado["tabla"]
+    assert resultado["url"].startswith("http://127.0.0.1:5000/static/graficas/")
     from pathlib import Path
 
     assert Path(resultado["ruta"]).exists()
@@ -67,7 +76,8 @@ def test_endpoint_reportes_usa_almacen(tmp_path):
     stats = cliente.get("/reportes/estadisticas")
     assert grafica.status_code == 200
     assert stats.status_code == 200
-    assert grafica.get_json()["url"].endswith(".png")
+    assert grafica.get_json()["url"].startswith("http://")
+    assert "/static/graficas/" in grafica.get_json()["url"]
     assert stats.get_json()["url"].endswith(".png")
 
     nombre = grafica.get_json()["archivo"]

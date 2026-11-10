@@ -306,11 +306,14 @@ class MonitorAire:
             params += f"&estacion_id={estacion.get('id')}"
         return params, contaminante
 
-    def _mostrar_png_desde_url(self, url_relativa, titulo):
+    def _mostrar_png_desde_url(self, url_imagen, titulo):
         for widget in self.frame_grafico.winfo_children():
             widget.destroy()
         try:
-            respuesta = self.pedir("GET", url_relativa)
+            if str(url_imagen).startswith("http"):
+                respuesta = requests.get(url_imagen, timeout=40)
+            else:
+                respuesta = self.pedir("GET", url_imagen)
             if respuesta.status_code != 200:
                 raise RuntimeError("imagen no disponible")
             imagen = Image.open(BytesIO(respuesta.content))
@@ -319,7 +322,7 @@ class MonitorAire:
             tk.Label(self.frame_grafico, image=self._foto, bg="white").pack(expand=True)
             tk.Label(
                 self.frame_grafico,
-                text=f"{titulo}\nGuardada en backend{url_relativa}",
+                text=f"{titulo}\nAbrir en navegador: {url_imagen}",
                 bg="white",
                 fg="#2d3436",
             ).pack()

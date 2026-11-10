@@ -70,7 +70,8 @@ python -m interfaz.monitor_aire
 ```
 
 Flujo: buscar ciudad → elegir estación → consultar → graficar/estadísticas.  
-Las imágenes se guardan en `backend/static/graficas/` y se sirven en `/static/graficas/...`.
+Las imágenes se guardan en `backend/static/graficas/`. La API responde `url` absoluta para abrir en el navegador, por ejemplo:
+`http://127.0.0.1:5000/static/graficas/historial_pm25_todas.png`.
 
 ## Endpoints
 

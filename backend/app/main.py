@@ -280,10 +280,12 @@ def crear_app(cliente=None, almacen=None, ruta_db=None):
         datos, error = _filtros_historial()
         if error:
             return error
+        base = request.url_root
         resultado = generar_imagen_historial(
             datos["filas"],
             contaminante=datos["contaminante"],
             estacion_id=datos["estacion_id"],
+            base_url=base,
         )
         if resultado["estado"] == "vacio":
             return respuesta_error(
@@ -299,7 +301,10 @@ def crear_app(cliente=None, almacen=None, ruta_db=None):
         datos, error = _filtros_historial()
         if error:
             return error
-        resultado = generar_imagen_estadisticas(datos["filas"])
+        resultado = generar_imagen_estadisticas(
+            datos["filas"],
+            base_url=request.url_root,
+        )
         if resultado["estado"] == "vacio":
             return respuesta_error(
                 "sin_datos",

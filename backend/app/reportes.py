@@ -23,8 +23,16 @@ def _nombre_seguro(texto):
     return limpio[:40] or "x"
 
 
-def generar_imagen_historial(filas, contaminante="pm25", estacion_id=None):
-    """Guarda linea de historial. Devuelve dict con resumen y ruta publica."""
+def url_publica(nombre, base_url=None):
+    """Arma URL absoluta para abrir la PNG en el navegador."""
+    ruta = f"/static/graficas/{nombre}"
+    if not base_url:
+        return ruta
+    return base_url.rstrip("/") + ruta
+
+
+def generar_imagen_historial(filas, contaminante="pm25", estacion_id=None, base_url=None):
+    """Guarda linea de historial. Devuelve dict con resumen y URL de navegador."""
     df = mediciones_a_dataframe(filas)
     resumen = resumen_consulta(df, contaminante)
     if df.empty:
@@ -64,12 +72,12 @@ def generar_imagen_historial(filas, contaminante="pm25", estacion_id=None):
         "estado": "ok",
         "resumen": resumen,
         "archivo": nombre,
-        "url": f"/static/graficas/{nombre}",
+        "url": url_publica(nombre, base_url),
         "ruta": str(ruta),
     }
 
 
-def generar_imagen_estadisticas(filas):
+def generar_imagen_estadisticas(filas, base_url=None):
     """Barras de promedio/min/max por contaminante. Guarda PNG."""
     df = mediciones_a_dataframe(filas)
     if df.empty:
@@ -110,7 +118,7 @@ def generar_imagen_estadisticas(filas):
     return {
         "estado": "ok",
         "archivo": nombre,
-        "url": f"/static/graficas/{nombre}",
+        "url": url_publica(nombre, base_url),
         "ruta": str(ruta),
         "tabla": tabla.reset_index().to_dict(orient="records"),
         "resumen": resumen_consulta(df),
