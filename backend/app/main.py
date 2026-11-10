@@ -5,6 +5,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request, Response, send_from_directory
+from flask_cors import CORS
 
 from backend.app.almacen import Almacen
 from backend.app.aqi import calcular_aqi
@@ -134,6 +135,7 @@ def crear_app(cliente=None, almacen=None, ruta_db=None):
     """Crea la aplicacion. La clave de OpenAQ solo se lee del entorno."""
     load_dotenv()
     app = Flask(__name__)
+    CORS(app, resources={r"/*": {"origins": ["http://localhost:4200", "http://127.0.0.1:4200"]}})
     app.cliente_openaq = cliente or ClienteOpenAQ()
     app.almacen = almacen or Almacen(ruta_db=ruta_db)
 
@@ -215,6 +217,17 @@ def crear_app(cliente=None, almacen=None, ruta_db=None):
     @app.get("/historial")
     def historial():
         return jsonify(app.almacen.listar_consultas())
+
+    @app.delete("/historial")
+    def historial_borrar():
+        borradas = app.almacen.borrar_historial()
+        if borradas == 0:
+            return respuesta_error(
+                "historial_vacio",
+                "No hay consultas guardadas para limpiar.",
+                404,
+            )
+        return jsonify({"estado": "ok", "borradas": borradas})
 
     @app.get("/historial/descargar")
     def historial_descargar():

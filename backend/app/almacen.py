@@ -65,6 +65,14 @@ class Almacen:
                     ),
                 )
 
+    def borrar_historial(self):
+        with self._conectar() as conexion:
+            consultas = conexion.execute("SELECT COUNT(*) AS n FROM consultas").fetchone()["n"]
+            conexion.execute("DELETE FROM mediciones")
+            conexion.execute("DELETE FROM consultas")
+            conexion.execute("DELETE FROM estaciones")
+        return int(consultas)
+
     def listar_consultas(self):
         with self._conectar() as conexion:
             filas = conexion.execute(

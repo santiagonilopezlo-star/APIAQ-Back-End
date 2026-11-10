@@ -103,6 +103,33 @@ def test_descarga_historial_vacio(tmp_path):
     assert respuesta.get_json()["error"] == "historial_vacio"
 
 
+def test_borrar_historial(tmp_path):
+    app = crear_app(ruta_db=tmp_path / "borrar.db")
+    cliente = app.test_client()
+
+    vacio = cliente.delete("/historial")
+    assert vacio.status_code == 404
+    assert vacio.get_json()["error"] == "historial_vacio"
+
+    app.almacen.guardar_consulta_ok(
+        "Medellin",
+        "2026-11-03T12:00:00Z",
+        "OpenAQ",
+        [medicion()],
+    )
+    ok = cliente.delete("/historial")
+    assert ok.status_code == 200
+    assert ok.get_json()["borradas"] == 1
+    assert app.almacen.listar_consultas() == []
+    assert app.almacen.listar_mediciones() == []
+
+
+def test_cors_permite_angular(tmp_path):
+    app = crear_app(ruta_db=tmp_path / "cors.db")
+    respuesta = app.test_client().get("/salud", headers={"Origin": "http://localhost:4200"})
+    assert respuesta.headers.get("Access-Control-Allow-Origin") == "http://localhost:4200"
+
+
 def test_error_no_guarda_historial(tmp_path):
     class ClienteMalo:
         def buscar_ubicaciones(self, iso="CO"):
