@@ -46,8 +46,21 @@ def cliente_bogota(valor=12.5, dias=1, unidad="µg/m³"):
     return ClienteConsulta(lugares, {10: lectura})
 
 
-def app_cliente(cliente, tmp_path):
-    return crear_app(cliente=cliente, ruta_db=tmp_path / "test.db").test_client()
+def app_cliente(cliente, tmp_path, meteo=None):
+    if meteo is None:
+        meteo = MeteoFijo(None)
+    return crear_app(cliente=cliente, meteo=meteo, ruta_db=tmp_path / "test.db").test_client()
+
+
+class MeteoFijo:
+    def __init__(self, calidad=None, error=None):
+        self._calidad = calidad
+        self.error = error
+
+    def calidad(self, ciudad):
+        if self.error:
+            raise self.error
+        return self._calidad
 
 
 def test_consultar_devuelve_medicion_sin_convertir(tmp_path):
@@ -69,7 +82,45 @@ def test_consultar_devuelve_medicion_sin_convertir(tmp_path):
     assert datos["referencia_oms"]["estado"] == "dato_insuficiente"
     assert datos["referencia_oms"]["separada_del_aqi"] is True
     assert datos["aqi_epa"] != datos["referencia_oms"]
+    assert datos["calidad_aire"]["nivel"] == "sin_dato"
     assert app.get("/historial").get_json()[0]["resultado"] == "ok"
+
+
+def test_open_meteo_responde_aunque_no_haya_estacion(tmp_path):
+    meteo = MeteoFijo(
+        {
+            "nivel": "regular",
+            "titulo": "Regular",
+            "us_aqi": 72,
+            "categoria_epa": "Moderada",
+            "pm2_5": 18.2,
+            "fuente": "Open-Meteo",
+            "aviso": "Estimación del modelo.",
+        }
+    )
+    app = app_cliente(ClienteConsulta([]), tmp_path, meteo=meteo)
+    respuesta = app.post("/consultar", json={"ciudad": "Cali"})
+    datos = respuesta.get_json()
+
+    assert respuesta.status_code == 200
+    assert datos["mediciones"] == []
+    assert datos["fuente"] == "Open-Meteo"
+    assert datos["calidad_aire"]["nivel"] == "regular"
+    assert datos["calidad_aire"]["us_aqi"] == 72
+    assert datos["aqi_epa"]["indice"] is None
+
+
+def test_consulta_adjunta_indice_sin_mezclarlo_con_el_aqi_de_estacion(tmp_path):
+    meteo = MeteoFijo({"nivel": "bien", "titulo": "Bien", "us_aqi": 30, "fuente": "Open-Meteo"})
+    respuesta = app_cliente(cliente_bogota(), tmp_path, meteo=meteo).post(
+        "/consultar", json={"ciudad": "Bogota"}
+    )
+    datos = respuesta.get_json()
+
+    assert datos["fuente"] == "OpenAQ"
+    assert datos["mediciones"][0]["valor"] == 12.5
+    assert datos["calidad_aire"]["us_aqi"] == 30
+    assert datos["aqi_epa"]["indice"] is None
 
 
 def test_ciudad_invalida(tmp_path):

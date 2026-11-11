@@ -13,6 +13,7 @@ from backend.app.cliente_openaq import ClienteOpenAQ, ErrorOpenAQ
 from backend.app.errores import respuesta_error
 from backend.app.normalizacion import normalizar_mediciones
 from backend.app.oms import comparar_oms
+from backend.app.open_meteo import ClienteOpenMeteo, ErrorOpenMeteo
 from backend.app.reportes import generar_imagen_estadisticas, generar_imagen_historial
 
 VERSION = "0.1.0"
@@ -114,6 +115,22 @@ def armar_consulta(ciudad, mediciones):
     }
 
 
+def calidad_vacia():
+    return {
+        "nivel": "sin_dato",
+        "titulo": "Sin clasificar",
+        "us_aqi": None,
+        "categoria_epa": None,
+        "pm2_5": None,
+        "pm10": None,
+        "unidad": "µg/m³",
+        "fecha": None,
+        "fuente": "Open-Meteo",
+        "modelo": "CAMS",
+        "aviso": "Open-Meteo no entregó un índice. No se inventa la calidad del aire.",
+    }
+
+
 def consultar_ciudad(cliente, ciudad):
     lugares = [
         lugar
@@ -131,12 +148,13 @@ def consultar_ciudad(cliente, ciudad):
     return armar_consulta(ciudad, utiles)
 
 
-def crear_app(cliente=None, almacen=None, ruta_db=None):
+def crear_app(cliente=None, almacen=None, ruta_db=None, meteo=None):
     """Crea la aplicacion. La clave de OpenAQ solo se lee del entorno."""
     load_dotenv()
     app = Flask(__name__)
     CORS(app, resources={r"/*": {"origins": ["http://localhost:4200", "http://127.0.0.1:4200"]}})
     app.cliente_openaq = cliente or ClienteOpenAQ()
+    app.meteo = meteo if meteo is not None else ClienteOpenMeteo()
     app.almacen = almacen or Almacen(ruta_db=ruta_db)
 
     @app.get("/salud")
@@ -200,12 +218,20 @@ def crear_app(cliente=None, almacen=None, ruta_db=None):
                 "Ocurrió un error inesperado.",
                 500,
             )
-        if resultado is None:
+        try:
+            calidad = app.meteo.calidad(ciudad)
+        except ErrorOpenMeteo:
+            calidad = None
+        if resultado is None and calidad is None:
             return respuesta_error(
                 "sin_datos",
-                "No hay mediciones de PM2.5, NO2 u O3 para esa ciudad.",
+                "No hay mediciones ni índice de calidad para esa ciudad.",
                 404,
             )
+        if resultado is None:
+            resultado = armar_consulta(ciudad, [])
+            resultado["fuente"] = "Open-Meteo"
+        resultado["calidad_aire"] = calidad or calidad_vacia()
         app.almacen.guardar_consulta_ok(
             resultado["ciudad"],
             resultado["fecha_consulta"],

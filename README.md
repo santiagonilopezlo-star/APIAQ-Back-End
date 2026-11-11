@@ -3,7 +3,7 @@
 [![CI](https://github.com/santiagonilopezlo-star/APIAQ-Back-End/actions/workflows/ci.yml/badge.svg)](https://github.com/santiagonilopezlo-star/APIAQ-Back-End/actions/workflows/ci.yml)
 
 Backend en Python del proyecto académico **Monitor de Calidad del Aire** (Universidad ECCI, Electiva I - Python).
-Consulta OpenAQ v3, calcula AQI EPA cuando unidad y periodo son compatibles, compara por separado con la guía OMS AQG 2021 y guarda historial en SQLite.
+Consulta OpenAQ v3, calcula AQI EPA cuando unidad y periodo son compatibles, compara por separado con la guía OMS AQG 2021, estima el estado de la ciudad con el US AQI de Open-Meteo y guarda historial en SQLite.
 
 - **Equipo:** Johan Stwee Salgado Rodríguez · Santiago Nicolás López López
 - **Interfaz web:** repositorio [-APIAQ-Front-End](https://github.com/santiagonilopezlo-star/-APIAQ-Front-End)
